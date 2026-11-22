@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mavericks — Bengaluru Civic Complaint Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Serif:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design Tokens ────────────────────────────────────── */
+    :root {
+      --bg-canvas:       #0d1117;
+      --bg-surface:      #161b22;
+      --bg-elevated:     #21262d;
+      --text-primary:    #e6edf3;
+      --text-secondary:  #8b949e;
+      --text-muted:      #484f58;
+      --border-subtle:   #30363d;
+      --border-default:  #3d444d;
+      --accent-primary:  #2f81f7;
+      --accent-water:    #1f8ced;
+      --accent-electric: #f0a000;
+      --status-error:    #f85149;
+      --status-success:  #3fb950;
+      --status-warning:  #d29922;
+      --status-info:     #58a6ff;
+      --recording-pulse: #f85149;
+
+      --space-1: 4px;  --space-2: 8px;   --space-3: 12px;
+      --space-4: 16px; --space-5: 20px;  --space-6: 24px;
+      --space-8: 32px; --space-10: 40px; --space-12: 48px;
+
+      --radius-sm: 4px; --radius-md: 8px;
+      --radius-lg: 12px; --radius-full: 9999px;
+
+      --font-sans:  'IBM Plex Sans', system-ui, sans-serif;
+      --font-serif: 'IBM Plex Serif', Georgia, serif;
+      --font-mono:  'IBM Plex Mono', 'Courier New', monospace;
+    }
+
+    /* ── Reset ────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background-color: var(--bg-canvas);
+      min-height: 100vh;
+    }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .app-shell {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 var(--space-4);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────── */
+    header {
+      padding: var(--space-6) 0 var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .brand { display: flex; flex-direction: column; gap: 2px; }
+
+    .brand-name {
+      font-family: var(--font-serif);
+      font-size: clamp(22px, 4vw, 28px);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .brand-tagline {
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: var(--space-2);
+    }
+
+    .agency-badges { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid;
+    }
+
+    .badge-water    { color: var(--accent-water);    border-color: color-mix(in srgb, var(--accent-water) 40%, transparent);    background: color-mix(in srgb, var(--accent-water) 8%, transparent); }
+    .badge-electric { color: var(--accent-electric); border-color: color-mix(in srgb, var(--accent-electric) 40%, transparent); background: color-mix(in srgb, var(--accent-electric) 8%, transparent); }
+    .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ── Geo Indicator ────────────────────────────────────── */
+    .geo-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      transition: color 250ms;
+    }
+
+    .geo-indicator.locating { color: var(--status-warning); }
+    .geo-indicator.located  { color: var(--status-success); }
+    .geo-indicator.denied   { color: var(--status-error); }
+
+    .geo-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .geo-dot.pulse {
+      animation: geo-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes geo-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── Main ─────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      padding: var(--space-6) 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+
+    /* ── Support Banner ───────────────────────────────────── */
+    .no-support-banner {
+      display: none;
+      background: color-mix(in srgb, var(--status-error) 8%, var(--bg-surface));
+      border: 1px solid color-mix(in srgb, var(--status-error) 40%, transparent);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      font-size: 14px;
+      color: var(--status-error);
+    }
+    .no-support-banner.visible { display: block; }
+
+    /* ── Voice Panel ──────────────────────────────────────── */
+    .voice-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-6);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .voice-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 40% at 50% 0%, color-mix(in srgb, var(--accent-primary) 6%, transparent), transparent);
+      pointer-events: none;
+    }
+
+    .lang-selector { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+
+    .lang-btn {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-full);
+      border: 1px solid var(--border-default);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 150ms, border-color 150ms, background 150ms;
+    }
+    .lang-btn:hover { color: var(--text-primary); border-color: var(--accent-primary); }
+    .lang-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+    .lang-btn:active { transform: scale(0.97); }
+    .lang-btn.active { color: var(--accent-primary); border-color: var(--accent-primary); background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-elevated)); }
+
+    .mic-container { position: relative; display: flex; align-items: center; justify-content: center; }
+
+    .mic-ring {
+      position: absolute;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent);
+      opacity: 0;
+      transition: opacity 250ms;
+    }
+    .mic-ring.active { opacity: 1; animation: pulse-ring 1.4s ease-out infinite; }
+
+    @keyframes pulse-ring {
+      0%   { transform: scale(0.9); opacity: 0.8; }
+      70%  { transform: scale(1.3); opacity: 0; }
+      100% { transform: scale(1.3); opacity: 0; }
+    }
+
+    .mic-btn {
+      position: relative; z-index: 1;
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 2px solid var(--border-default);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 150ms, border-color 150ms, background 150ms, transform 150ms;
+    }
+    .mic-btn:hover { color: var(--accent-primary); border-color: var(--accent-primary); background: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-elevated)); }
+    .mic-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 4px; }
+    .mic-btn:active { transform: scale(0.95); }
+    .mic-btn.recording { color: var(--recording-pulse); border-color: var(--recording-pulse); background: color-mix(in srgb, var(--recording-pulse) 12%, var(--bg-elevated)); animation: mic-beat 0.8s ease-in-out infinite alternate; }
+    .mic-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; animation: none; }
+
+    @keyframes mic-beat {
+      from { transform: scale(1); }
+      to   { transform: scale(1.06); }
+    }
+
+    .mic-icon { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    .voice-status { font-size: 14px; color: var(--text-secondary); text-align: center; min-height: 20px; transition: color 250ms; }
+    .voice-status.recording  { color: var(--recording-pulse); }
+    .voice-status.processing { color: var(--status-warning); }
+    .voice-status.success    { color: var(--status-success); }
+    .voice-status.error      { color: var(--status-error); }
+    .voice-status.info       { color: var(--status-info); }
+
+    .transcript-preview {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-size: 14px;
+      color: var(--text-secondary);
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      font-style: italic;
+      transition: color 250ms;
+    }
+    .transcript-preview.has-text { color: var(--text-primary); font-style: normal; }
+    .transcript-preview.empty-hint { justify-content: center; text-align: center; }
+
+    /* ── Detail Form ──────────────────────────────────────── */
+    .detail-form-wrap {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      gap: var(--space-4);
+      animation: card-enter 250ms ease-out both;
+    }
+    .detail-form-wrap.visible { display: flex; }
+
+    .detail-form-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .detail-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+
+    @media (max-width: 540px) {
+      .detail-form { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 0.03em;
+    }
+
+    .field select,
+    .field input[type="text"] {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      padding: var(--space-3) var(--space-4);
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      transition: border-color 150ms;
+      width: 100%;
+    }
+    .field select:hover,
+    .field input[type="text"]:hover { border-color: var(--accent-primary); }
+    .field select:focus,
+    .field input[type="text"]:focus { outline: 2px solid var(--accent-primary); outline-offset: 0; border-color: var(--accent-primary); }
+    .field select option { background: var(--bg-elevated); }
+
+    .detail-form-actions {
+      display: flex;
+      gap: var(--space-3);
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: var(--space-3) var(--space-5);
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid;
+      transition: opacity 150ms, transform 150ms, background 150ms;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border-default);
+      color: var(--text-secondary);
+    }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--border-default); color: var(--text-primary); background: var(--bg-elevated); }
+
+    .btn-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .btn.loading .btn-spinner { display: block; }
+    .btn.loading .btn-label { opacity: 0.7; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tabs (registry) ──────────────────────────────────── */
+    .registry-section { display: flex; flex-direction: column; gap: var(--space-4); }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border-subtle);
+      gap: 0;
+    }
+
+    .tab-btn {
+      padding: var(--space-3) var(--space-5);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      transition: color 150ms, border-color 150ms;
+    }
+    .tab-btn:hover { color: var(--text-primary); }
+    .tab-btn:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+    .tab-btn.active.water-tab    { color: var(--accent-water);    border-bottom-color: var(--accent-water); }
+    .tab-btn.active.electric-tab { color: var(--accent-electric); border-bottom-color: var(--accent-electric); }
+    .tab-btn.active.my-tab       { color: var(--accent-primary);  border-bottom-color: var(--accent-primary); }
+
+    .tab-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      background: var(--bg-elevated);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: flex; flex-direction: column; gap: var(--space-3); }
+
+    /* ── Complaint Cards ──────────────────────────────────── */
+    .complaint-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--space-4);
+      align-items: start;
+      transition: border-color 150ms;
+      animation: card-enter 300ms ease-out both;
+    }
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .complaint-card:hover { border-color: var(--border-default); }
+
+    .complaint-icon {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .complaint-icon.water    { background: color-mix(in srgb, var(--accent-water) 15%, transparent); }
+    .complaint-icon.electric { background: color-mix(in srgb, var(--accent-electric) 15%, transparent); }
+    .complaint-icon svg { width: 18px; height: 18px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .complaint-icon.water svg    { stroke: var(--accent-water); }
+    .complaint-icon.electric svg { stroke: var(--accent-electric); }
+
+    .complaint-body { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+
+    .complaint-text {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .complaint-details {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+
+    .complaint-detail-row {
+      display: flex;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .detail-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      padding: 2px var(--space-3);
+    }
+
+    .detail-chip-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .geo-chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .complaint-meta {
+      display: flex;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .complaint-meta-item {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .complaint-ref {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      padding: 2px var(--space-2);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .complaint-status-badge {
+      flex-shrink: 0;
+      padding: 3px var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .status-registered { color: var(--status-success); background: color-mix(in srgb, var(--status-success) 12%, transparent); }
+    .status-pending    { color: var(--status-warning); background: color-mix(in srgb, var(--status-warning) 12%, transparent); }
+    .status-failed     { color: var(--status-error);   background: color-mix(in srgb, var(--status-error)   12%, transparent); }
+
+    /* ── Empty State ──────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; gap: var(--space-3);
+      padding: var(--space-10) var(--space-6);
+      background: var(--bg-surface);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-lg);
+      text-align: center;
+    }
+    .empty-state-icon { width: 40px; height: 40px; color: var(--text-muted); }
+    .empty-state-label { font-size: 14px; color: var(--text-secondary); }
+    .empty-state-hint  { font-size: 13px; color: var(--text-muted); max-width: 36ch; }
+
+    /* ── Toast ────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed; bottom: var(--space-6); right: var(--space-6);
+      display: flex; flex-direction: column; gap: var(--space-3);
+      z-index: 100; pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      max-width: 340px;
+      display: flex; flex-direction: column; gap: var(--space-1);
+      animation: toast-in 250ms ease-out both;
+      border-left: 3px solid var(--border-default);
+    }
+    .toast.success { border-left-color: var(--status-success); }
+    .toast.error   { border-left-color: var(--status-error); }
+    .toast.info    { border-left-color: var(--status-info); }
+    .toast.warning { border-left-color: var(--status-warning); }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .toast-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .toast-body  { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    /* ── Footer ───────────────────────────────────────────── */
+    footer {
+      padding: var(--space-5) 0;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .footer-note { font-size: 12px; color: var(--text-muted); }
+    .footer-links { display: flex; gap: var(--space-4); }
+    .footer-links a { font-size: 12px; color: var(--text-muted); text-decoration: none; transition: color 150ms; }
+    .footer-links a:hover { color: var(--text-secondary); }
+    .footer-links a:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; border-radius: 2px; }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 540px) {
+      .complaint-card { grid-template-columns: auto 1fr; }
+      .complaint-status-badge { grid-column: 2; justify-self: start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header>
+    <div class="brand">
+      <h1 class="brand-name">Mavericks</h1>
+      <p class="brand-tagline">Bengaluru Civic Complaint Assistant</p>
+    </div>
+    <div class="header-right">
+      <div class="agency-badges">
+        <span class="badge badge-water" aria-label="BWSSB — Water complaints supported">
+          <span class="badge-dot" aria-hidden="true"></span>BWSSB
+        </span>
+        <span class="badge badge-electric" aria-label="BESCOM — Electricity complaints supported">
+          <span class="badge-dot" aria-hidden="true"></span>BESCOM
+        </span>
+      </div>
+      <!-- Geolocation status indicator -->
+      <div class="geo-indicator locating" id="geoIndicator" aria-live="polite" aria-label="Location status">
+        <span class="geo-dot pulse" id="geoDot" aria-hidden="true"></span>
+        <span id="geoLabel">Locating…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────────────── -->
+  <main>
+
+    <!-- Browser support warning -->
+    <div class="no-support-banner" id="noSupportBanner" role="alert" aria-live="polite">
+      ⚠ Your browser does not support the Web Speech API. Please use Google Chrome or Microsoft Edge to use voice features.
+    </div>
+
+    <!-- ── Voice Panel ──────────────────────────────────── -->
+    <section class="voice-panel" aria-labelledby="voicePanelTitle">
+      <h2 id="voicePanelTitle" class="sr-only">Voice Complaint Recorder</h2>
+
+      <!-- Language selector -->
+      <div class="lang-selector" role="group" aria-label="Select complaint language">
+        <button class="lang-btn active" data-lang="en-IN" aria-pressed="true">English</button>
+        <button class="lang-btn" data-lang="hi-IN" aria-pressed="false">हिन्दी</button>
+        <button class="lang-btn" data-lang="kn-IN" aria-pressed="false">ಕನ್ನಡ</button>
+      </div>
+
+      <!-- Mic button -->
+      <div class="mic-container" role="presentation">
+        <div class="mic-ring" id="micRing" aria-hidden="true"></div>
+        <button class="mic-btn" id="micBtn"
+          aria-label="Start voice recording"
+          aria-describedby="voiceStatus">
+          <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0"/>
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Status line -->
+      <p class="voice-status" id="voiceStatus" aria-live="polite" aria-atomic="true">
+        Press the microphone to start
+      </p>
+
+      <!-- Live transcript -->
+      <div class="transcript-preview empty-hint" id="transcriptPreview"
+        aria-live="polite" aria-label="Transcript of your spoken complaint">
+        Your voice transcript will appear here…
+      </div>
+
+      <!-- ── Detail Form (shown after voice capture) ───── -->
+      <div class="detail-form-wrap" id="detailFormWrap" aria-live="polite">
+        <p class="detail-form-title">Confirm complaint details</p>
+        <div class="detail-form">
+          <!-- Problem type -->
+          <div class="field">
+            <label for="problemType">Problem type</label>
+            <select id="problemType" name="problemType">
+              <optgroup label="Water (BWSSB)" id="waterOptions">
+                <option value="No water supply">No water supply</option>
+                <option value="Low water pressure">Low water pressure</option>
+                <option value="Water contamination / dirty water">Water contamination / dirty water</option>
+                <option value="Pipeline leakage">Pipeline leakage</option>
+                <option value="Sewage / drainage overflow">Sewage / drainage overflow</option>
+                <option value="Sewage blockage">Sewage blockage</option>
+                <option value="Burst main pipeline">Burst main pipeline</option>
+                <option value="Water meter issue">Water meter issue</option>
+                <option value="Billing discrepancy">Billing discrepancy</option>
+              </optgroup>
+              <optgroup label="Electricity (BESCOM)" id="electricOptions">
+                <option value="Power outage / no electricity">Power outage / no electricity</option>
+                <option value="Voltage fluctuation">Voltage fluctuation</option>
+                <option value="Transformer failure">Transformer failure</option>
+                <option value="Broken / dangling wire">Broken / dangling wire</option>
+                <option value="Short circuit">Short circuit</option>
+                <option value="Street light not working">Street light not working</option>
+                <option value="Electricity meter issue">Electricity meter issue</option>
+                <option value="Billing discrepancy">Billing discrepancy (BESCOM)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- Duration -->
+          <div class="field">
+            <label for="issueDuration">Issue ongoing since</label>
+            <select id="issueDuration" name="issueDuration">
+              <option value="Less than 1 hour">Less than 1 hour</option>
+              <option value="1–4 hours">1–4 hours</option>
+              <option value="4–12 hours" selected>4–12 hours</option>
+              <option value="12–24 hours">12–24 hours</option>
+              <option value="1–2 days">1–2 days</option>
+              <option value="2–7 days">2–7 days</option>
+              <option value="More than a week">More than a week</option>
+              <option value="Recurring issue">Recurring / intermittent issue</option>
+            </select>
+          </div>
+
+          <!-- Landmark / address hint -->
+          <div class="field" style="grid-column: 1 / -1;">
+            <label for="landmark">Nearby landmark or address (optional)</label>
+            <input type="text" id="landmark" name="landmark"
+              placeholder="e.g. Near Lal Bagh main gate, Basavanagudi"
+              maxlength="120" />
+          </div>
+        </div>
+
+        <div class="detail-form-actions">
+          <button class="btn btn-ghost" id="cancelBtn" type="button">Cancel</button>
+          <button class="btn btn-primary" id="submitBtn" type="button">
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <span class="btn-label">File Complaint</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Registry Tabs ────────────────────────────────── -->
+    <section class="registry-section" aria-labelledby="registryTitle">
+      <div class="section-header">
+        <h2 class="section-title" id="registryTitle">Complaint Registry</h2>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar" role="tablist" aria-label="Complaint registry views">
+        <button class="tab-btn my-tab active" role="tab" id="tab-mine"
+          aria-selected="true" aria-controls="panel-mine" data-tab="mine">
+          My Complaints
+          <span class="tab-count" id="count-mine">0</span>
+        </button>
+        <button class="tab-btn water-tab" role="tab" id="tab-bwssb"
+          aria-selected="false" aria-controls="panel-bwssb" data-tab="bwssb" tabindex="-1">
+          BWSSB Received
+          <span class="tab-count" id="count-bwssb">0</span>
+        </button>
+        <button class="tab-btn electric-tab" role="tab" id="tab-bescom"
+          aria-selected="false" aria-controls="panel-bescom" data-tab="bescom" tabindex="-1">
+          BESCOM Received
+          <span class="tab-count" id="count-bescom">0</span>
+        </button>
+      </div>
+
+      <!-- My complaints panel -->
+      <div class="tab-panel active" id="panel-mine" role="tabpanel" aria-labelledby="tab-mine">
+        <div class="empty-state" id="emptyMine" role="status">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+            <line x1="9" y1="16" x2="13" y2="16"/>
+          </svg>
+          <p class="empty-state-label">No complaints filed yet</p>
+          <p class="empty-state-hint">Use the microphone above to describe your issue — in English, Hindi, or Kannada.</p>
+        </div>
+      </div>
+
+      <!-- BWSSB received panel -->
+      <div class="tab-panel" id="panel-bwssb" role="tabpanel" aria-labelledby="tab-bwssb">
+        <div class="empty-state" id="emptyBwssb" role="status">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2C6 9 4 13 4 16a8 8 0 0 0 16 0c0-3-2-7-8-14z"/>
+          </svg>
+          <p class="empty-state-label">No water complaints received</p>
+          <p class="empty-state-hint">BWSSB complaints will appear here once submitted.</p>
+        </div>
+      </div>
+
+      <!-- BESCOM received panel -->
+      <div class="tab-panel" id="panel-bescom" role="tabpanel" aria-labelledby="tab-bescom">
+        <div class="empty-state" id="emptyBescom" role="status">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="13 2 13 9 20 9 11 22 11 15 4 15 13 2"/>
+          </svg>
+          <p class="empty-state-label">No electricity complaints received</p>
+          <p class="empty-state-hint">BESCOM complaints will appear here once submitted.</p>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ── Footer ─────────────────────────────────────────── -->
+  <footer>
+    <p class="footer-note">Mock API — complaints are simulated for demonstration purposes.</p>
+    <nav class="footer-links" aria-label="Quick links">
+      <a href="https://bwssb.gov.in" target="_blank" rel="noopener noreferrer">BWSSB Official</a>
+      <a href="https://bescom.karnataka.gov.in" target="_blank" rel="noopener noreferrer">BESCOM Official</a>
+    </nav>
+  </footer>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer" aria-live="assertive" aria-atomic="false"></div>
+
+
+<!-- ═══════════════════════════════════════════════
+     Mock BWSSB API
+     In-memory store: MockBWSSB.store[]
+════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+const MockBWSSB = (() => {
+  const store = [];   // All complaints received by BWSSB
+
+  function _refId() {
+    const ts  = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return 'BWSSB-' + ts + '-' + rnd;
+  }
+
+  function _estimatedResolution() {
+    const hours = [4, 8, 12, 24, 48][Math.floor(Math.random() * 5)];
+    const d = new Date(Date.now() + hours * 36e5);
+    return d.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  async function raiseComplaint(payload) {
+    // payload: { description, language, problemType, duration, landmark, geo }
+    await new Promise(r => setTimeout(r, 900 + Math.random() * 600));
+
+    if (Math.random() < 0.05) {
+      throw new Error('BWSSB server temporarily unavailable. Please retry.');
+    }
+
+    const refId = _refId();
+    const record = {
+      success: true,
+      agency: 'BWSSB',
+      referenceId: refId,
+      description: payload.description,
+      problemType: payload.problemType,
+      duration: payload.duration,
+      landmark: payload.landmark || '',
+      language: payload.language,
+      geo: payload.geo || null,
+      status: 'Registered',
+      message: 'Your water complaint has been registered with BWSSB. Reference: ' + refId,
+      estimatedResolution: _estimatedResolution(),
+      helpline: '1916',
+      filedAt: new Date().toISOString(),
+    };
+    store.push(record);
+    return record;
+  }
+
+  function getAll() { return store.slice(); }
+
+  return { raiseComplaint, getAll };
+})();
+</script>
+
+
+<!-- ═══════════════════════════════════════════════
+     Mock BESCOM API
+     In-memory store: MockBESCOM.store[]
+════════════════════════════════════════════════ -->
+<script>
+const MockBESCOM = (() => {
+  const store = [];
+
+  function _refId() {
+    const ts  = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return 'BESCOM-' + ts + '-' + rnd;
+  }
+
+  function _estimatedResolution() {
+    const hours = [2, 4, 6, 12, 24][Math.floor(Math.random() * 5)];
+    const d = new Date(Date.now() + hours * 36e5);
+    return d.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  async function raiseComplaint(payload) {
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 700));
+
+    if (Math.random() < 0.05) {
+      throw new Error('BESCOM server temporarily unavailable. Please retry.');
+    }
+
+    const refId = _refId();
+    const record = {
+      success: true,
+      agency: 'BESCOM',
+      referenceId: refId,
+      description: payload.description,
+      problemType: payload.problemType,
+      duration: payload.duration,
+      landmark: payload.landmark || '',
+      language: payload.language,
+      geo: payload.geo || null,
+      status: 'Registered',
+      message: 'Your electricity complaint has been registered with BESCOM. Reference: ' + refId,
+      estimatedResolution: _estimatedResolution(),
+      helpline: '1912',
+      filedAt: new Date().toISOString(),
+    };
+    store.push(record);
+    return record;
+  }
+
+  function getAll() { return store.slice(); }
+
+  return { raiseComplaint, getAll };
+})();
+</script>
+
+
+<!-- ═══════════════════════════════════════════════
+     Intent Detection (keyword-based, multilingual)
+════════════════════════════════════════════════ -->
+<script>
+const IntentDetector = (() => {
+  const WATER_PATTERNS = [
+    /\b(water|pipe|pipeline|leak|leakage|sewage|drainage|drain|tap|supply|pressure|flood|overflow|contamina|bwssb|bore|tank|meter)\b/i,
+    /\b(paani|pani|nali|sewage|drenage|tapas|baadh|meetha)\b/i,
+    /\b(neeru|koda|niru|mozzar|drenaj|bwssb)\b/i,
+    /ನೀರು|ಪೈಪ್|ಒಳಚರಂಡಿ|ಮಳೆನೀರು|ನಳ/,
+    /पानी|नल|पाइप|नाला|सीवर|जलापूर्ति/,
+  ];
+
+  const ELECTRICITY_PATTERNS = [
+    /\b(electricity|electric|power|current|light|voltage|transformer|wire|wiring|trip|short circuit|outage|blackout|fluctuati|bescom|shock|fuse|load|phase|lineman)\b/i,
+    /\b(bijli|power|voltage|blackout|bescom)\b/i,
+    /\b(bijli|prakash|bescom|voltage)\b/i,
+    /ವಿದ್ಯುತ್|ಕರೆಂಟ್|ಲೈಟ್|ವೋಲ್ಟೇಜ್|ಟ್ರಾನ್ಸ್ಫಾರ್ಮರ್/,
+    /बिजली|करंट|विद्युत|ट्रांसफार्मर|मीटर/,
+  ];
+
+  function detect(text) {
+    const isWater    = WATER_PATTERNS.some(p => p.test(text));
+    const isElectric = ELECTRICITY_PATTERNS.some(p => p.test(text));
+
+    if (isWater && isElectric) {
+      const wScore = WATER_PATTERNS.filter(p => p.test(text)).length;
+      const eScore = ELECTRICITY_PATTERNS.filter(p => p.test(text)).length;
+      return wScore >= eScore ? 'water' : 'electricity';
+    }
+    if (isWater)    return 'water';
+    if (isElectric) return 'electricity';
+    return 'unknown';
+  }
+
+  return { detect };
+})();
+</script>
+
+
+<!-- ═══════════════════════════════════════════════
+     Main Application Controller
+════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+const state = {
+  isRecording:      false,
+  isProcessing:     false,
+  selectedLang:     'en-IN',
+  recognition:      null,
+  currentTranscript:'',
+  pendingTranscript:'',    // Transcript waiting for detail form confirmation
+  pendingIntent:    '',    // 'water' | 'electricity'
+  geo:              null,  // { lat, lng, accuracy, label }
+  geoState:         'locating', // 'locating' | 'located' | 'denied' | 'unavailable'
+};
+
+// ── DOM refs ───────────────────────────────────────────────
+const micBtn            = document.getElementById('micBtn');
+const micRing           = document.getElementById('micRing');
+const voiceStatus       = document.getElementById('voiceStatus');
+const transcriptPreview = document.getElementById('transcriptPreview');
+const detailFormWrap    = document.getElementById('detailFormWrap');
+const problemTypeEl     = document.getElementById('problemType');
+const issueDurationEl   = document.getElementById('issueDuration');
+const landmarkEl        = document.getElementById('landmark');
+const submitBtn         = document.getElementById('submitBtn');
+const cancelBtn         = document.getElementById('cancelBtn');
+const toastContainer    = document.getElementById('toastContainer');
+const noSupportBanner   = document.getElementById('noSupportBanner');
+const geoIndicator      = document.getElementById('geoIndicator');
+const geoDot            = document.getElementById('geoDot');
+const geoLabel          = document.getElementById('geoLabel');
+
+// Tab / panel refs
+const tabBtns  = document.querySelectorAll('.tab-btn');
+const tabPanels = document.querySelectorAll('.tab-panel');
+
+// ── Browser Support Check ──────────────────────────────────
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
+  noSupportBanner.classList.add('visible');
+  micBtn.disabled = true;
+  setStatus('Voice input not supported in this browser. Try Chrome or Edge.', 'error');
+}
+
+// ── Geolocation ────────────────────────────────────────────
+function initGeo() {
+  if (!navigator.geolocation) {
+    setGeoState('unavailable', 'Location unavailable');
+    return;
+  }
+  setGeoState('locating', 'Locating…');
+  navigator.geolocation.getCurrentPosition(
+    onGeoSuccess,
+    onGeoError,
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
+}
+
+function onGeoSuccess(pos) {
+  const lat = pos.coords.latitude.toFixed(5);
+  const lng = pos.coords.longitude.toFixed(5);
+  const acc = Math.round(pos.coords.accuracy);
+  state.geo = { lat, lng, accuracy: acc, label: lat + ', ' + lng };
+  setGeoState('located', lat + ', ' + lng + ' ±' + acc + 'm');
+}
+
+function onGeoError(err) {
+  const msgs = {
+    1: 'Location denied',
+    2: 'Position unavailable',
+    3: 'Location timed out',
+  };
+  setGeoState('denied', msgs[err.code] || 'Location error');
+  state.geo = null;
+}
+
+function setGeoState(newState, label) {
+  state.geoState = newState;
+  geoIndicator.className = 'geo-indicator ' + newState;
+  geoLabel.textContent = label;
+  if (newState === 'locating') {
+    geoDot.classList.add('pulse');
+  } else {
+    geoDot.classList.remove('pulse');
+  }
+}
+
+// Request geo on load
+initGeo();
+
+// ── Language Selection ─────────────────────────────────────
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.lang-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-pressed', 'true');
+    state.selectedLang = btn.dataset.lang;
+    if (state.isRecording) stopRecording();
+  });
+});
+
+// ── Tab Navigation ─────────────────────────────────────────
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  btn.addEventListener('keydown', e => {
+    // Arrow key navigation between tabs
+    const tabs = Array.from(tabBtns);
+    const idx = tabs.indexOf(btn);
+    if (e.key === 'ArrowRight') { e.preventDefault(); tabs[(idx + 1) % tabs.length].focus(); tabs[(idx + 1) % tabs.length].click(); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); tabs[(idx - 1 + tabs.length) % tabs.length].focus(); tabs[(idx - 1 + tabs.length) % tabs.length].click(); }
+  });
+});
+
+function switchTab(tabId) {
+  tabBtns.forEach(b => {
+    const active = b.dataset.tab === tabId;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+    b.setAttribute('tabindex', active ? '0' : '-1');
+  });
+  tabPanels.forEach(p => {
+    p.classList.toggle('active', p.id === 'panel-' + tabId);
+  });
+}
+
+// ── Mic Button ─────────────────────────────────────────────
+micBtn.addEventListener('click', () => {
+  if (!SpeechRecognition || state.isProcessing) return;
+  if (state.isRecording) stopRecording();
+  else startRecording();
+});
+
+// ── Voice Recording ────────────────────────────────────────
+function startRecording() {
+  // Refresh geo if stale / denied — give user another chance
+  if (state.geoState !== 'located') initGeo();
+
+  state.recognition = new SpeechRecognition();
+  state.recognition.lang = state.selectedLang;
+  state.recognition.interimResults = true;
+  state.recognition.maxAlternatives = 1;
+  state.recognition.continuous = false;
+
+  state.recognition.onstart = () => {
+    state.isRecording = true;
+    state.currentTranscript = '';
+    micBtn.classList.add('recording');
+    micBtn.setAttribute('aria-label', 'Stop recording');
+    micRing.classList.add('active');
+    setStatus('Listening… speak your complaint', 'recording');
+    setTranscript('', false);
+    hideDetailForm();
+  };
+
+  state.recognition.onresult = (event) => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    const text = (state.currentTranscript + ' ' + (final || interim)).trim();
+    if (final) state.currentTranscript = (state.currentTranscript + ' ' + final).trim();
+    setTranscript(text, true);
+  };
+
+  state.recognition.onerror = (event) => {
+    const msgs = {
+      'not-allowed':   'Microphone access denied. Please allow microphone permission and retry.',
+      'no-speech':     'No speech detected. Please try again.',
+      'network':       'Network error. Please check your connection.',
+      'audio-capture': 'Microphone not found. Please connect a microphone.',
+      'aborted':       null,
+    };
+    const msg = msgs[event.error] !== undefined ? msgs[event.error] : ('Voice error: ' + event.error);
+    if (msg) { setStatus(msg, 'error'); showToast('Voice Error', msg, 'error'); }
+    resetMicUI();
+  };
+
+  state.recognition.onend = () => {
+    const transcript = state.currentTranscript.trim();
+    resetMicUI();
+    if (transcript.length > 2) {
+      prepareDetailForm(transcript);
+    } else if (transcript.length === 0) {
+      setStatus('No speech detected. Press the microphone to try again.', 'error');
+    }
+  };
+
+  try {
+    state.recognition.start();
+  } catch (err) {
+    setStatus('Could not start voice recognition. Please try again.', 'error');
+    resetMicUI();
+  }
+}
+
+function stopRecording() {
+  if (state.recognition) state.recognition.stop();
+}
+
+function resetMicUI() {
+  state.isRecording = false;
+  micBtn.classList.remove('recording');
+  micBtn.setAttribute('aria-label', 'Start voice recording');
+  micRing.classList.remove('active');
+}
+
+// ── Detail Form ────────────────────────────────────────────
+const WATER_PROBLEMS    = Array.from(document.querySelectorAll('#waterOptions option')).map(o => o.value);
+const ELECTRIC_PROBLEMS = Array.from(document.querySelectorAll('#electricOptions option')).map(o => o.value);
+
+function prepareDetailForm(transcript) {
+  const intent = IntentDetector.detect(transcript);
+
+  if (intent === 'unknown') {
+    setStatus('Could not detect complaint type. Please mention water or electricity clearly.', 'error');
+    showToast('Intent Not Detected', 'Please describe a water issue (BWSSB) or electricity issue (BESCOM) clearly.', 'warning');
+    return;
+  }
+
+  state.pendingTranscript = transcript;
+  state.pendingIntent     = intent;
+
+  // Pre-select problem type group based on intent
+  const opts = problemTypeEl.options;
+  for (let i = 0; i < opts.length; i++) {
+    const inWaterGroup    = opts[i].parentElement.id === 'waterOptions';
+    const inElectricGroup = opts[i].parentElement.id === 'electricOptions';
+    if (intent === 'water'       && inWaterGroup)    { problemTypeEl.selectedIndex = i; break; }
+    if (intent === 'electricity' && inElectricGroup) { problemTypeEl.selectedIndex = i; break; }
+  }
+
+  landmarkEl.value = '';
+  setStatus('Review and confirm your complaint details below.', 'info');
+  showDetailForm();
+}
+
+function showDetailForm() {
+  detailFormWrap.classList.add('visible');
+  micBtn.disabled = true;
+  submitBtn.disabled = false;
+  submitBtn.classList.remove('loading');
+  setTimeout(() => problemTypeEl.focus(), 60);
+}
+
+function hideDetailForm() {
+  detailFormWrap.classList.remove('visible');
+  micBtn.disabled = false;
+  state.pendingTranscript = '';
+  state.pendingIntent = '';
+}
+
+// Cancel button
+cancelBtn.addEventListener('click', () => {
+  hideDetailForm();
+  setStatus('Press the microphone to try again.', '');
+  setTranscript('', false);
+});
+
+// Submit button
+submitBtn.addEventListener('click', async () => {
+  if (!state.pendingTranscript || !state.pendingIntent) return;
+  await submitComplaint();
+});
+
+// ── Complaint Submission ───────────────────────────────────
+async function submitComplaint() {
+  state.isProcessing = true;
+  submitBtn.disabled = true;
+  submitBtn.classList.add('loading');
+  cancelBtn.disabled = true;
+
+  const payload = {
+    description:  state.pendingTranscript,
+    problemType:  problemTypeEl.value,
+    duration:     issueDurationEl.value,
+    landmark:     landmarkEl.value.trim(),
+    language:     state.selectedLang,
+    geo:          state.geo,
+  };
+
+  const agencyLabel = state.pendingIntent === 'water' ? 'BWSSB (Water)' : 'BESCOM (Electricity)';
+  setStatus('Filing with ' + agencyLabel + '…', 'processing');
+
+  try {
+    let result;
+    if (state.pendingIntent === 'water') {
+      result = await MockBWSSB.raiseComplaint(payload);
+    } else {
+      result = await MockBESCOM.raiseComplaint(payload);
+    }
+
+    setStatus('Complaint registered with ' + result.agency + ' ✓', 'success');
+    hideDetailForm();
+    setTranscript('', false);
+
+    addComplaintCard(result, state.pendingIntent, 'panel-mine');
+    addComplaintCard(result, state.pendingIntent, state.pendingIntent === 'water' ? 'panel-bwssb' : 'panel-bescom');
+    updateTabCounts();
+
+    showToast(
+      result.agency + ': Complaint Registered',
+      'Ref: ' + result.referenceId + ' · Est. ' + result.estimatedResolution + ' · Helpline: ' + result.helpline,
+      'success'
+    );
+
+  } catch (err) {
+    setStatus('Failed to register: ' + err.message, 'error');
+    showToast('Submission Failed', err.message + ' Please try again.', 'error');
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+    cancelBtn.disabled = false;
+  } finally {
+    state.isProcessing = false;
+    if (!detailFormWrap.classList.contains('visible')) {
+      micBtn.disabled = false;
+    }
+    cancelBtn.disabled = false;
+  }
+}
+
+// ── Tab counts ─────────────────────────────────────────────
+function updateTabCounts() {
+  document.getElementById('count-mine').textContent   = document.querySelectorAll('#panel-mine .complaint-card').length;
+  document.getElementById('count-bwssb').textContent  = MockBWSSB.getAll().length;
+  document.getElementById('count-bescom').textContent = MockBESCOM.getAll().length;
+}
+
+// ── Complaint Card ─────────────────────────────────────────
+function addComplaintCard(result, intent, panelId) {
+  const panel = document.getElementById(panelId);
+
+  // Hide that panel's empty state
+  const emptyId = { 'panel-mine': 'emptyMine', 'panel-bwssb': 'emptyBwssb', 'panel-bescom': 'emptyBescom' }[panelId];
+  if (emptyId) { const e = document.getElementById(emptyId); if (e) e.style.display = 'none'; }
+
+  const card = document.createElement('article');
+  card.className = 'complaint-card';
+  card.setAttribute('aria-label', result.agency + ' complaint ' + result.referenceId);
+
+  const iconSvg = intent === 'water'
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6 9 4 13 4 16a8 8 0 0 0 16 0c0-3-2-7-8-14z"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="13 2 13 9 20 9 11 22 11 15 4 15 13 2"/></svg>';
+
+  const langMap = { 'en-IN': 'EN', 'hi-IN': 'HI', 'kn-IN': 'KN' };
+  const langLabel = langMap[result.language] || result.language;
+
+  const filedDate = new Date(result.filedAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
+
+  // Geo chip
+  let geoHtml = '';
+  if (result.geo) {
+    geoHtml = '<span class="detail-chip geo-chip" aria-label="Location: ' + escapeHtml(result.geo.label) + '">' +
+      '<span class="detail-chip-label">GPS</span>' +
+      escapeHtml(result.geo.lat) + ', ' + escapeHtml(result.geo.lng) +
+      ' <span style="color:var(--text-muted)">±' + result.geo.accuracy + 'm</span>' +
+      '</span>';
+  } else {
+    geoHtml = '<span class="detail-chip" aria-label="Location not available"><span class="detail-chip-label">GPS</span>Not captured</span>';
+  }
+
+  // Landmark chip
+  const landmarkHtml = result.landmark
+    ? '<span class="detail-chip" aria-label="Landmark: ' + escapeHtml(result.landmark) + '"><span class="detail-chip-label">Near</span>' + escapeHtml(result.landmark) + '</span>'
+    : '';
+
+  card.innerHTML =
+    '<div class="complaint-icon ' + (intent === 'water' ? 'water' : 'electric') + '" aria-hidden="true">' + iconSvg + '</div>' +
+    '<div class="complaint-body">' +
+      '<p class="complaint-text">' + escapeHtml(result.description) + '</p>' +
+      '<div class="complaint-details">' +
+        '<div class="complaint-detail-row">' +
+          '<span class="detail-chip"><span class="detail-chip-label">Problem</span>' + escapeHtml(result.problemType) + '</span>' +
+          '<span class="detail-chip"><span class="detail-chip-label">Since</span>' + escapeHtml(result.duration) + '</span>' +
+        '</div>' +
+        '<div class="complaint-detail-row">' + geoHtml + landmarkHtml + '</div>' +
+      '</div>' +
+      '<div class="complaint-meta">' +
+        '<span class="complaint-ref">' + escapeHtml(result.referenceId) + '</span>' +
+        '<span class="complaint-meta-item" aria-label="Language: ' + langLabel + '">' + langLabel + '</span>' +
+        '<span class="complaint-meta-item" aria-label="Filed at ' + filedDate + '">' + filedDate + '</span>' +
+        '<span class="complaint-meta-item">Est. ' + escapeHtml(result.estimatedResolution) + '</span>' +
+        '<span class="complaint-meta-item">Helpline: ' + escapeHtml(result.helpline) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<span class="complaint-status-badge status-registered" role="status">' + result.status + '</span>';
+
+  // Newest first
+  panel.insertBefore(card, panel.firstChild);
+}
+
+// ── UI Helpers ─────────────────────────────────────────────
+function setStatus(text, type) {
+  voiceStatus.textContent = text;
+  voiceStatus.className = 'voice-status' + (type ? ' ' + type : '');
+}
+
+function setTranscript(text, hasText) {
+  transcriptPreview.textContent = text || 'Your voice transcript will appear here…';
+  transcriptPreview.className = 'transcript-preview' + (hasText ? ' has-text' : ' empty-hint');
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showToast(title, body, type) {
+  type = type || 'info';
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.setAttribute('role', 'status');
+  toast.innerHTML =
+    '<p class="toast-title">' + escapeHtml(title) + '</p>' +
+    '<p class="toast-body">'  + escapeHtml(body)  + '</p>';
+  toastContainer.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 300ms, transform 300ms';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(20px)';
+    setTimeout(() => toast.remove(), 320);
+  }, 5500);
+}
+</script>
+
+</body>
+</html>

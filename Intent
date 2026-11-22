@@ -1,0 +1,16 @@
+Intent: 
+Create a Citizen friendly voice enabled Chat Application to help raise complaints for below:
+- Water related issues with BWSSB (Bangalore Water Supply and Sewage Board)
+- Electricity related issues with BESCOM 
+
+The App should allow voice interface accepting voice commands in english, hindi, kannada 
+
+Context: 
+I am a normal citizen and resident of bengaluru, and I face issues with civic services provided by BWSSB and BESCOM. I want to raise complaints in an easy and quick manner using voice. 
+
+Expected Output:
+- A voice enabled chat bot application named 'Mavericks'
+- 'Mavericks' must have a button for starting a voice session, recording of my voice, and do the below:
+-- If I complain about water then 'Mavericks' should contact BWSSB API interface and raise a complaints
+-- If I complain about Electricity, 'Mavericks' should contact BESCOM API interface and raise a complaints
+- You may create a mock interface for BESCOM and BWSSB for testing purposes 
